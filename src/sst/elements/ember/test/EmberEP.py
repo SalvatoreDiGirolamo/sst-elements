@@ -27,6 +27,8 @@ class EmberEP( EndPoint ):
 
     def build( self, nodeID, extraKeys ):
 
+        if (nodeID >= self.numNids): return
+      
         nicComponentName = "firefly.nic"
         if 'nicComponent' in self.nicParams:
             nicComponentName = self.nicParams['nicComponent']
