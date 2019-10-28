@@ -40,6 +40,7 @@ netInspect = ''
 rtrArb = ''
 
 rndmPlacement = False
+rndmSeed = 0xf00dbeef
 #rndmPlacement = True
 bgPercentage = int(0)
 bgMean = 1000
@@ -72,7 +73,7 @@ motifDefaults = {
 
 try:
     opts, args = getopt.getopt(sys.argv[1:], "", ["topo=", "shape=","hostsPerRtr=",
-		"simConfig=","platParams=",",debug=","platform=","numNodes=",
+		"simConfig=","platParams=","debug=","platform=","numNodes=",
 		"numCores=","loadFile=","loadFileVar=","cmdLine=","printStats=","randomPlacement=",
 		"emberVerbose=","netBW=","netPktSize=","netFlitSize=",
 		"rtrArb=","embermotifLog=",	"rankmapper=","motifAPI=",
@@ -130,8 +131,9 @@ for o, a in opts:
     elif o in ("--rtrArb"):
         rtrArb = a
     elif o in ("--randomPlacement"):
-        if a == "True":
-            rndmPlacement = True
+        rndmPlacement = True
+        if a != "True":
+            rndmSeed = int(a, 16);
     elif o in ("--bgPercentage"):
         bgPercentage = int(a)
     elif o in ("--bgMean"):
@@ -309,9 +311,12 @@ if jobid > 0 and rndmPlacement:
 
 	hermesParams["hermesParams.mapType"] = 'random'
 
-	random.seed( 0xf00dbeef )
+	#random.seed( 0xf00dbeef )
+	random.seed( rndmSeed )
 	nidList=""
-	nids = random.sample( xrange( int(topoInfo.getNumNodes())), int(numNodes) )
+	#nids = random.sample( xrange( int(topoInfo.getNumNodes())), int(numNodes) )
+    #ranom mapping, same allocation
+	nids = random.sample( xrange( int(numNodes)), int(numNodes) )
 	#nids.sort()
 
 	allNids = []
@@ -328,8 +333,10 @@ if jobid > 0 and rndmPlacement:
 	tmp = workList[0]
 	tmp = tmp[1]
 
-	for x in tmp:
-		x['cmd'] = "-nidList=" + nidList + " " + x['cmd']
+
+	#for x in tmp:
+	#	print "SALVO: x[cmd]: " + str(x['cmd'])
+	#	x['cmd'] = "-nidList=" + nidList + " " + x['cmd']
 
 	random.shuffle( emptyNids )
 

@@ -78,6 +78,8 @@ private:
     void*    m_recvBuf;
     uint32_t m_loopIndex;
 	_ReductionOperation* m_op;
+    uint64_t* it_start;
+    uint64_t* it_stop;
 };
 
 }

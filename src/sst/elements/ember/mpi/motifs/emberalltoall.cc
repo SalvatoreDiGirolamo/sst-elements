@@ -30,6 +30,10 @@ EmberAlltoallGenerator::EmberAlltoallGenerator(SST::Component* owner,
     jobId        = (int) params.find<int>("_jobId"); //NetworkSim
     m_sendBuf = NULL;
     m_recvBuf = NULL;
+
+    it_start = (uint64_t*) malloc(sizeof(uint64_t) * m_iterations);
+    it_stop = (uint64_t*) malloc(sizeof(uint64_t) * m_iterations);
+
 }
 
 bool EmberAlltoallGenerator::generate( std::queue<EmberEvent*>& evQ) {
@@ -49,14 +53,25 @@ bool EmberAlltoallGenerator::generate( std::queue<EmberEvent*>& evQ) {
             output("Job Finished: JobNum:%d Time:%" PRIu64 " us\n", jobId,  getCurrentSimTimeMicro());
             */
         }
+
+        for (uint32_t i=0; i<m_iterations; i++){
+            uint64_t it_lat = (it_stop[i] - it_start[i]);
+            output("RANK %u %u %lu ns\n", rank(), i, it_lat);
+        }
+
         return true;
     }
     if ( 0 == m_loopIndex ) {
         enQ_getTime( evQ, &m_startTime );
     }
 
+
+    enQ_getTime( evQ, &(it_start[m_loopIndex]));
+
     enQ_compute( evQ, m_compute );
     enQ_alltoall( evQ, m_sendBuf, m_bytes, CHAR, m_recvBuf, m_bytes, CHAR, GroupWorld );
+
+    enQ_getTime( evQ, &(it_stop[m_loopIndex]));
 
     if ( ++m_loopIndex == m_iterations ) {
         enQ_getTime( evQ, &m_stopTime );

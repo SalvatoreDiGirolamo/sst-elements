@@ -39,30 +39,53 @@ EmberAllreduceGenerator::EmberAllreduceGenerator(SST::Component* owner,
 		m_op = Hermes::MP::SUM;
 	}	
 	memSetBacked();
-	m_sendBuf = memAlloc(sizeofDataType(DOUBLE));
-	m_recvBuf = memAlloc(sizeofDataType(DOUBLE));
+	m_sendBuf = memAlloc(m_count * sizeofDataType(DOUBLE));
+	m_recvBuf = memAlloc(m_count * sizeofDataType(DOUBLE));
+
+    it_start = (uint64_t*) malloc(sizeof(uint64_t) * m_iterations);
+    it_stop = (uint64_t*) malloc(sizeof(uint64_t) * m_iterations);
 }
 
 bool EmberAllreduceGenerator::generate( std::queue<EmberEvent*>& evQ) {
 
     if ( m_loopIndex == m_iterations ) {
         if ( 0 == rank() ) {
-            double latency = (double)(m_stopTime-m_startTime)/(double)m_iterations;
-            latency /= 1000000000.0;
-            output( "%s: ranks %d, loop %d, %d double(s), latency %.3f us\n",
-                    getMotifName().c_str(), size(), m_iterations, m_count, latency * 1000000.0  );
+ 
+            double tot_latency = (double)(m_stopTime-m_startTime);
+            double avg_latency = (double)(m_stopTime-m_startTime)/(double)m_iterations;
+            avg_latency /= 1000000000.0;
+            tot_latency /= 1000000000.0;
+            output( "%s: ranks %d, loop %d, %d double(s), avg_latency %.3f us, tot_latency: %.3f \n",
+                    getMotifName().c_str(), size(), m_iterations, m_count, avg_latency * 1000000.0, tot_latency * 1000000.0 );
+
         }
+
+        for (uint32_t i=0; i<m_iterations; i++){
+            uint64_t it_lat = (it_stop[i] - it_start[i]);
+            output("RANK %u %u %lu ns\n", rank(), i, it_lat);
+        }
+
         return true;
     }
+
     if ( 0 == m_loopIndex ) {
         enQ_getTime( evQ, &m_startTime );
     }
 
+    enQ_getTime( evQ, &(it_start[m_loopIndex]));
+
     enQ_compute( evQ, m_compute );
     enQ_allreduce( evQ, m_sendBuf, m_recvBuf, m_count, DOUBLE, m_op, GroupWorld );
 
+
+    enQ_getTime( evQ, &(it_stop[m_loopIndex]));
+
+
     if ( ++m_loopIndex == m_iterations ) {
         enQ_getTime( evQ, &m_stopTime );
+
+
+
     }
     return false;
 }
