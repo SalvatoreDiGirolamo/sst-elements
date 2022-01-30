@@ -107,6 +107,7 @@ private:
     PortInterface** ports;
     internal_router_event** vc_heads;
     int* xbar_in_credits;
+    int* pending_credits;
     int* output_queue_lengths;
 
 #if VERIFY_DECLOCKING

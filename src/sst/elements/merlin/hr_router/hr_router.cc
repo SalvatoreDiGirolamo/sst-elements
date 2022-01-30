@@ -621,7 +621,11 @@ void
 hr_router::init_vcs()
 {
     vc_heads = new internal_router_event*[num_ports*num_vcs];
-    xbar_in_credits = new int[num_ports*num_vcs];
+
+    //this is an extremely ugly quick hack to see if things work 
+    xbar_in_credits = new int[num_ports*num_vcs*2];
+    pending_credits = &(xbar_in_credits[num_ports*num_vcs]);
+
     output_queue_lengths = new int[num_ports*num_vcs];
     for ( int i = 0; i < num_ports*num_vcs; i++ ) {
         vc_heads[i] = NULL;
@@ -629,8 +633,12 @@ hr_router::init_vcs()
         output_queue_lengths[i] = 0;
     }
 
+    for ( int i = 0; i < num_ports*num_vcs*2; i++ ) {
+        xbar_in_credits[i] = 0;
+    }
+
     for ( int i = 0; i < num_ports; i++ ) {
-        ports[i]->initVCs(num_vns,vcs_per_vn.data(),&vc_heads[i*num_vcs],&xbar_in_credits[i*num_vcs],&output_queue_lengths[i*num_vcs]);
+        ports[i]->initVCs(num_vns,vcs_per_vn.data(),&vc_heads[i*num_vcs],&xbar_in_credits[i*num_vcs],&output_queue_lengths[i*num_vcs],pending_credits);
     }
 
     topo->setOutputBufferCreditArray(xbar_in_credits, num_vcs);

@@ -185,6 +185,8 @@ private:
     int* port_ret_credits;
     int* port_out_credits;
 
+    int* pending_credits;
+
     // Represents the start of when a port was idle
     // If the buffer was empty we instantiate this to the current time
     SimTime_t idle_start;
@@ -324,7 +326,7 @@ public:
     // time_base is a frequency which represents the bandwidth of the link in flits/second.
     PortControl(ComponentId_t cid, Params& params, Router* rif, int rtr_id, int port_number, Topology *topo);
 
-    void initVCs(int vns, int* vcs_per_vn, internal_router_event** vc_heads, int* xbar_in_credits, int* output_queue_lengths);
+    void initVCs(int vns, int* vcs_per_vn, internal_router_event** vc_heads, int* xbar_in_credits, int* output_queue_lengths, int* pending_credits);
 
 
     ~PortControl();

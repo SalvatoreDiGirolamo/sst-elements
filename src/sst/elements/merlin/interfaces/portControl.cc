@@ -75,6 +75,9 @@ PortControl::send(internal_router_event* ev, int vc)
 #endif
 
 	xbar_in_credits[vc] -= ev->getFlitCount();
+    assert(pending_credits[ev->getNextPort() * num_vcs + ev->getVC()] >= ev->getFlitCount());
+    pending_credits[ev->getNextPort() * num_vcs + ev->getVC()] -= ev->getFlitCount();
+
     if ( oql_track_port ) {
         int flits = ev->getFlitCount();
         for ( int i = 0; i < num_vcs; ++i ) {
@@ -130,6 +133,7 @@ PortControl::recv(int vc)
         auto event = input_buf[vc].front();
         topo->route_packet(port_number, event->getVC(), event);
 	    vc_heads[vc] = input_buf[vc].front();
+        pending_credits[event->getNextPort() * num_vcs + event->getVC()] += event->getFlitCount();
 	}
 
     int vc_return = topo->isHostPort(port_number) ? event->getCreditReturnVC() : vc;
@@ -470,7 +474,7 @@ PortControl::PortControl(ComponentId_t cid, Params& params,  Router* rif, int rt
 
 
 void
-PortControl::initVCs(int vns, int* vcs_per_vn, internal_router_event** vc_heads_in, int* xbar_in_credits_in, int* output_queue_lengths_in)
+PortControl::initVCs(int vns, int* vcs_per_vn, internal_router_event** vc_heads_in, int* xbar_in_credits_in, int* output_queue_lengths_in, int* pending_credits_in)
 {
     vc_heads = vc_heads_in;
     num_vns = vns;
@@ -490,6 +494,7 @@ PortControl::initVCs(int vns, int* vcs_per_vn, internal_router_event** vc_heads_
     }
     xbar_in_credits = xbar_in_credits_in;
     output_queue_lengths = output_queue_lengths_in;
+    pending_credits = pending_credits_in;
 
     // Input and output buffers
     input_buf = new port_queue_t[num_vcs];
@@ -979,6 +984,7 @@ PortControl::handle_input_n2r(Event* ev)
             topo->route_packet(port_number, rtr_event->getVC(), rtr_event);
             vc_heads[curr_vc] = rtr_event;
             parent->inc_vcs_with_data();
+            pending_credits[rtr_event->getNextPort() * num_vcs + rtr_event->getVC()] += rtr_event->getFlitCount();
 	    }
 
 	    if ( event->getTraceType() != SST::Interfaces::SimpleNetwork::Request::NONE ) {
@@ -1075,6 +1081,7 @@ PortControl::handle_input_r2r(Event* ev)
             topo->route_packet(port_number, event->getVC(), event);
             vc_heads[curr_vc] = event;
             parent->inc_vcs_with_data();
+            pending_credits[event->getNextPort() * num_vcs + event->getVC()] += event->getFlitCount();
 	    }
 
 	    if ( event->getTraceType() != SimpleNetwork::Request::NONE ) {

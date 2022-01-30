@@ -71,6 +71,7 @@ private:
     int num_vcs;
 
     int const* outputCredits;
+    int const* pendingCredits;
     int* thresholds;
     double adaptive_threshold;
 

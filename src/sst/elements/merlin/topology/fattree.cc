@@ -18,6 +18,9 @@
 #include <algorithm>
 #include <stdlib.h>
 
+//#define FORCE_ADAPTIVE
+//#define USE_PENDING
+//#define RANDOMIZE_TIES
 
 using namespace SST::Merlin;
 using namespace std;
@@ -193,25 +196,42 @@ void topo_fattree::route_packet(int port, int vc, internal_router_event* ev)
         int vc = ev->getVC();
         int index  = next_port*num_vcs + vc;
 
-        /*
-        if ( outputCredits[index] >= thresholds[index] ) {
+#ifdef USE_PENDING
+        int output_credits = outputCredits[index] - pendingCredits[index];
+#else
+        int output_credits = outputCredits[index];
+#endif
+
+#ifndef FORCE_ADAPTIVE
+        if ( output_credits >= thresholds[index] ) {
             rtrev->rerouting.push_back(0);    
             return;
         }
-        */
+#endif
 
         // Send this on the least loaded port.  For now, just look at
         // current VC, later we may look at overall port loading.  Set
         // the max to be the "natural" port and only adaptively route
         // if it's not the best one (ties go to natural port)
-        int max = outputCredits[index];
+        int max = output_credits;
         // If all ports have zero credits left, then we just set
         // it to the port that it would normally go to without
         // adaptive routing.
         int port = next_port;
         for ( int i = (down_ports * num_vcs) + vc; i < num_ports * num_vcs; i += num_vcs ) {
-            if ( outputCredits[i] > max || (outputCredits[i] == max && rand() % 2) ) {
-                max = outputCredits[i];
+#ifdef USE_PENDING
+            output_credits = outputCredits[i] - pendingCredits[i];
+#else
+            output_credits = outputCredits[i];
+#endif
+            //printf("RTR_ID: %d; port: %d; outputCredits: %d; pendingCredits: %d; real_output_credits: %d\n", id, i, outputCredits[i], pendingCredits[i], output_credits);
+ 
+#ifdef RANDOMIZE_TIES
+            if ( output_credits > max || (output_credits == max && rand() % 2)) {
+#else
+            if ( output_credits > max ) {
+#endif
+                max = output_credits;
                 port = i / num_vcs;
             }
         }
@@ -219,8 +239,10 @@ void topo_fattree::route_packet(int port, int vc, internal_router_event* ev)
         rtrev->rerouting.push_back(1);
         rtrev->rerouting.push_back(next_port);
         rtrev->rerouting.push_back(outputCredits[index]);
+        rtrev->rerouting.push_back(pendingCredits[index]);
         rtrev->rerouting.push_back(port);
         rtrev->rerouting.push_back(outputCredits[port * num_vcs]);
+        rtrev->rerouting.push_back(pendingCredits[port * num_vcs]);
 
         ev->setNextPort(port);
     }
@@ -282,6 +304,7 @@ Topology::PortState topo_fattree::getPortState(int port) const
 void topo_fattree::setOutputBufferCreditArray(int const* array, int vcs) {
         num_vcs = vcs;
         outputCredits = array;
+        pendingCredits = &(array[num_vcs * num_ports]);
         thresholds = new int[num_vcs * num_ports];
         for ( int i = 0; i < num_vcs * num_ports; i++ ) {
             thresholds[i] = outputCredits[i] * adaptive_threshold;

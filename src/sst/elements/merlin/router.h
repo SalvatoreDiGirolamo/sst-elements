@@ -602,7 +602,7 @@ public:
         {}
 
 
-    virtual void initVCs(int vns, int* vcs_per_vn, internal_router_event** vc_heads, int* xbar_in_credits, int* output_queue_lengths) = 0;
+    virtual void initVCs(int vns, int* vcs_per_vn, internal_router_event** vc_heads, int* xbar_in_credits, int* output_queue_lengths, int* pending_credits) = 0;
 
 
     virtual ~PortInterface() {}
