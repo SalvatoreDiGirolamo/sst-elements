@@ -24,7 +24,7 @@ class topoFatTree(Topology):
     def __init__(self):
         Topology.__init__(self)
         self._declareClassVariables(["link_latency","host_link_latency","bundleEndpoints","_ups","_downs","_routers_per_level","_groups_per_level","_start_ids",
-                                     "_total_hosts"])
+                                     "_total_hosts", "algorithm"])
         self._declareParams("main",["shape","routing_alg","adaptive_threshold"])        
         self._setCallbackOnWrite("shape",self._shape_callback)
         self._subscribeToPlatformParamSet("topology")

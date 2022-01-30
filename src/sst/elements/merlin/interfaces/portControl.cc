@@ -86,6 +86,9 @@ PortControl::send(internal_router_event* ev, int vc)
     }
 	ev->setVC(vc);
 
+    RtrEvent* rtrev = static_cast<RtrEvent*>(ev->getEncapsulatedEvent());
+    rtrev->timings.push_back(getCurrentSimTimeNano());
+
 	output_buf[vc].push(ev);
 	if ( waiting ) {
         output_timing->send(1,NULL);
@@ -957,6 +960,9 @@ PortControl::handle_input_n2r(Event* ev)
 	    RtrEvent* event = static_cast<RtrEvent*>(ev);
 	    // Simply put the event into the right virtual network queue
 
+        event->setIngressRTRTime(getCurrentSimTimeNano());
+        event->timings.push_back(getCurrentSimTimeNano());
+
 	    // Need to process input and do the routing
         int vn = event->getRouteVN();
         internal_router_event* rtr_event = topo->process_input(event);
@@ -987,6 +993,16 @@ PortControl::handle_input_n2r(Event* ev)
                           event->getTrustedSrc(),
                           event->getDest());
 	    }
+
+        printf("%" PRIu64 " receiving packet (n2r) [%d.%d->%d.%d] on VN %d from src %" PRIu64 " to dest %" PRIu64 "\n",
+                        getCurrentSimTimeNano(),
+                        remote_rtr_id,
+                        remote_port_number,
+                        rtr_id,
+                        port_number,
+                        curr_vc,
+                        event->getTrustedSrc(),
+                        event->getDest());
 
 	    if ( parent->getRequestNotifyOnEvent() ) parent->notifyEvent();
 	}
@@ -1044,6 +1060,9 @@ PortControl::handle_input_r2r(Event* ev)
         if ( enable_congestion_management ) parent->reportIncomingEvent(event);
 	    // Simply put the event into the right virtual network queue
 
+        RtrEvent* rtr_ev = static_cast<RtrEvent*>(event->getEncapsulatedEvent());
+        rtr_ev->timings.push_back(getCurrentSimTimeNano());
+
 	    // Need to do the routing
 	    int curr_vc = event->getVC();
 
@@ -1070,6 +1089,18 @@ PortControl::handle_input_r2r(Event* ev)
                           event->getSrc(),
                           event->getDest());
 	    }
+
+        printf("%" PRIu64 " receiving packet (r2r) [%d.%d->%d.%d] on VC %d from src %" PRIu64 " to dest %" PRIu64 " (%p)\n",
+                        getCurrentSimTimeNano(),
+                        rtr_id,
+                        port_number,
+                        remote_rtr_id,
+                        remote_port_number,
+                        event->getVC(),
+                        event->getSrc(),
+                        event->getDest(),
+                        event->getEncapsulatedEvent());
+
 
 	    if ( parent->getRequestNotifyOnEvent() ) parent->notifyEvent();
 	}
@@ -1168,6 +1199,42 @@ PortControl::handle_output(Event* ev) {
         }
 
 	    if ( host_port ) {
+            RtrEvent* rtrev = static_cast<RtrEvent*>(send_event->getEncapsulatedEvent());
+            rtrev->timings.push_back(getCurrentSimTimeNano());
+
+            SimTime_t it = rtrev->getIngressRTRTime();
+            SimTime_t et = getCurrentSimTimeNano();
+            SimTime_t i2e_lat = et - it;
+
+            printf("RTR: %d; Port: %d; Delivering packet: [%d->%d] ingress_rtr_time: %" PRIu64 "; egress_rtr_time: %" PRIu64 " latency: %" PRIu64" - Delays: ", rtr_id, port_number, send_event->getSrc(), send_event->getDest(), it, et, i2e_lat);
+
+            SimTime_t prev = rtrev->timings[0];
+            for (auto it: rtrev->timings)
+            {
+                printf("%" PRIu64 " ", it - prev );
+                prev = it;
+            }
+            printf(" - Stalls (busy): ");
+            for (auto it: rtrev->stalls_busy)
+            {
+                printf("%d ", it);
+            }
+
+            printf(" - Stalls (credit): ");
+            for (auto it: rtrev->stalls_credits)
+            {
+                printf("%d ", it);
+            }
+
+
+            printf(" - Rerouting: ");
+            for (auto it: rtrev->rerouting)
+            {
+                printf("%d ", it);
+            }            
+
+            printf("\n");
+
             if ( enable_congestion_management ) {
                 updateCongestionState(send_event);
             }
@@ -1176,6 +1243,21 @@ PortControl::handle_output(Event* ev) {
             delete send_event;
 	    }
 	    else {
+
+            RtrEvent* rtrev = static_cast<RtrEvent*>(send_event->getEncapsulatedEvent());
+            rtrev->timings.push_back(getCurrentSimTimeNano());
+
+            printf("%" PRIu64 " forwarding packet [%d.%d->%d.%d] on VC %d from src %" PRIu64 " to dest %" PRIu64 " (%p)\n",
+                          getCurrentSimTimeNano(),
+                          rtr_id,
+                          port_number,
+                          remote_rtr_id,
+                          remote_port_number,
+                          send_event->getVC(),
+                          send_event->getSrc(),
+                          send_event->getDest(),
+                          send_event->getEncapsulatedEvent());
+
             port_link->send(1,send_event);
 	    }
 	}

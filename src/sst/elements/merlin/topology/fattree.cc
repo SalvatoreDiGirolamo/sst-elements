@@ -76,7 +76,8 @@ topo_fattree::topo_fattree(ComponentId_t cid, Params& params, int num_ports, int
         }
     }
     else {
-        std::string route_algo = params.find<std::string>("algorithm", "deterministic");
+        std::string route_algo = params.find<std::string>("algorithm", "adaptive");
+        printf("Routing algo: %s\n", route_algo.c_str());
         for ( int i = 0; i < num_vns; ++i ) vn_route_algos.push_back(route_algo);
     }
 
@@ -169,24 +170,36 @@ void topo_fattree::route_packet(int port, int vc, internal_router_event* ev)
 {
     route_deterministic(port,vc,ev);
     
+    RtrEvent* rtrev = static_cast<RtrEvent*>(ev->getEncapsulatedEvent());
+
     int dest = ev->getDest();
     // Down routes are always deterministic and are already done in route
     if ( dest >= low_host && dest <= high_host ) {
+        rtrev->rerouting.push_back(0);
         return;
     }
     // Up routes can be adaptive, so things can change from the normal path
     else {
         int vn = ev->getVN();
         // If we're not adaptive, then we're already routed
-        if ( !vns[vn].allow_adaptive ) return;
+        if ( !vns[vn].allow_adaptive ) {
+            rtrev->rerouting.push_back(0);
+            return;
+        }
 
         // If the port we're supposed to be going to has a buffer with
         // fewer credits than the threshold, adaptively route
         int next_port = ev->getNextPort();
         int vc = ev->getVC();
         int index  = next_port*num_vcs + vc;
-        if ( outputCredits[index] >= thresholds[index] ) return;
-        
+
+        /*
+        if ( outputCredits[index] >= thresholds[index] ) {
+            rtrev->rerouting.push_back(0);    
+            return;
+        }
+        */
+
         // Send this on the least loaded port.  For now, just look at
         // current VC, later we may look at overall port loading.  Set
         // the max to be the "natural" port and only adaptively route
@@ -197,11 +210,18 @@ void topo_fattree::route_packet(int port, int vc, internal_router_event* ev)
         // adaptive routing.
         int port = next_port;
         for ( int i = (down_ports * num_vcs) + vc; i < num_ports * num_vcs; i += num_vcs ) {
-            if ( outputCredits[i] > max ) {
+            if ( outputCredits[i] > max || (outputCredits[i] == max && rand() % 2) ) {
                 max = outputCredits[i];
                 port = i / num_vcs;
             }
         }
+
+        rtrev->rerouting.push_back(1);
+        rtrev->rerouting.push_back(next_port);
+        rtrev->rerouting.push_back(outputCredits[index]);
+        rtrev->rerouting.push_back(port);
+        rtrev->rerouting.push_back(outputCredits[port * num_vcs]);
+
         ev->setNextPort(port);
     }
 }

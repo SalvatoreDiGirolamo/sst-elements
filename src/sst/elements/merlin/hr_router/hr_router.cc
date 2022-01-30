@@ -276,6 +276,13 @@ hr_router::hr_router(ComponentId_t cid, Params& params) :
     }
     params.enableVerify(true);
 
+    port_stalls_busy.resize(num_ports);
+    port_stalls_credit.resize(num_ports);
+    for (int i=0; i<num_ports; i++) {
+        port_stalls_busy[i] = 0;
+        port_stalls_credit[i] = 0;
+    }
+
     // Get the Xbar arbitration
     std::string xbar_arb = params.find<std::string>("xbar_arb","merlin.xbar_arb_lru");
 
@@ -412,6 +419,19 @@ hr_router::clock_handler(Cycle_t cycle)
         // if ( progress_vcs[i] != -1 ) {
         if ( progress_vcs[i] > -1 ) {
             internal_router_event* ev = ports[i]->recv(progress_vcs[i]);
+
+            RtrEvent* rtr_ev = static_cast<RtrEvent*>(ev->getEncapsulatedEvent());
+            rtr_ev->stalls_busy.push_back(port_stalls_busy[i]);
+            rtr_ev->stalls_credits.push_back(port_stalls_credit[i]);
+            port_stalls_busy[i] = 0;
+            port_stalls_credit[i] = 0;
+
+            if ( topo->getPortState(i) == Topology::R2N) {
+                ev->ingress_time = getCurrentSimTimeNano();
+            }else if ( topo->getPortState(ev->getNextPort()) == Topology::R2N) {
+                printf("Latency: %llu\n", getCurrentSimTimeNano() - ev->ingress_time);
+            }
+
             ports[ev->getNextPort()]->send(ev,ev->getVC());
 
             if ( ev->getTraceType() == SimpleNetwork::Request::FULL ) {
@@ -429,10 +449,13 @@ hr_router::clock_handler(Cycle_t cycle)
                               ev->getNextPort(),
                               ev->getVC());
             }
-
         }
-        else if ( progress_vcs[i] == -2 ) {
+        else if ( progress_vcs[i] <= -2 ) {
                 xbar_stalls[i]->addData(1);
+
+                assert(progress_vcs[i] != -2);
+                if (progress_vcs[i] == -3 || progress_vcs[i] == -5) port_stalls_busy[i]++;
+                if (progress_vcs[i] == -4 || progress_vcs[i] == -5) port_stalls_credit[i]++;
         }
 
         // Should stop at zero, need to find a clean way to do this

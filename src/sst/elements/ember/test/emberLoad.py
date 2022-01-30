@@ -10,6 +10,7 @@ from networkConfig import *
 from loadFileParse import *
 from paramUtils import *
 
+
 debug    = 0
 emberVerbose = 0
 embermotifLog = ''
@@ -41,6 +42,7 @@ netHostsPerRtr = 1
 netInspect = ''
 rtrArb = ''
 nicsPerNode=1
+defaultCustomRouting="deterministic"
 
 rndmPlacement = False
 #rndmPlacement = True
@@ -80,7 +82,7 @@ try:
                  "rtrArb=","embermotifLog=","rankmapper=", "motifAPI=",
                  "bgPercentage=","bgMean=","bgStddev=","bgMsgSize=","netInspect=",
                  "detailedModelName=","detailedModelParams=","detailedModelNodes=",
-                 "useSimpleMemoryModel","param=","paramDir=","statsModule=","statsFile="])
+                 "useSimpleMemoryModel","param=","paramDir=","statsModule=","statsFile=", "algorithm="])
 
 except getopt.GetoptError as err:
     print (str(err))
@@ -162,6 +164,8 @@ for o, a in opts:
         statsModuleName = a
     elif o in ("--statsFile"):
         statsFile = a
+    elif o in ("--algorithm"):
+        defaultCustomRouting = a
     else:
         assert False, "unknow option {0}".format(o)
 
@@ -253,7 +257,7 @@ if "torus" == netTopo:
 
 elif "fattree" == netTopo:
 
-    topoInfo = FattreeInfo(netShape)
+    topoInfo = FattreeInfo(netShape, defaultCustomRouting)
     topo = topoFatTree()
 
 elif "dragonfly" == netTopo or "dragonfly2" == netTopo:
@@ -428,6 +432,11 @@ for a in params['merlin']:
     else:
         print ("set merlin {0}={1}".format( key, value ))
     sst.merlin._params[key] = value
+
+
+sst.merlin._params["verboseLevel"] = 10
+sst.merlin._params["verboseMask"] = -1
+sst.merlin._params["debug"] = 1
 
 nicParams["packetSize"] =    networkParams['packetSize']
 nicParams["link_bw"] = networkParams['link_bw']

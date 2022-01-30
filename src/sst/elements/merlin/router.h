@@ -175,6 +175,15 @@ public:
         ser & injectionTime;
     }
 
+    inline void setIngressRTRTime(SimTime_t t) { ingress_rtr_time = t; }
+    inline SimTime_t getIngressRTRTime() { return ingress_rtr_time; } 
+public: 
+
+    std::vector<SimTime_t> timings;
+    std::vector<uint32_t> stalls_busy;
+    std::vector<uint32_t> stalls_credits;
+    std::vector<uint32_t> rerouting;
+
 private:
     SST::Interfaces::SimpleNetwork::Request* request;
 
@@ -182,6 +191,7 @@ private:
     int route_vn;
     SimTime_t injectionTime;
     int size_in_flits;
+    SimTime_t ingress_rtr_time;
 
     ImplementSerializable(SST::Merlin::RtrEvent)
 
@@ -411,6 +421,9 @@ class internal_router_event : public BaseRtrEvent {
     int vc;
     int credit_return_vc;
     RtrEvent* encap_ev;
+
+public:
+    SimTime_t ingress_time;
 
 public:
     internal_router_event() :

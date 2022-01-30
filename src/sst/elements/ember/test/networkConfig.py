@@ -103,10 +103,11 @@ class HyperXInfo(TopoInfo):
 
 
 class FattreeInfo(TopoInfo):
-    def __init__( self, shape ):
+    def __init__( self, shape, routing):
         self.params = {}
         self.numNodes = self.calcNumNodes(shape)
         self.params["fattree.shape"] = shape
+        self.params["fattree.algorithm"] = routing
                 
     def getNetworkParams(self):
         return self.params

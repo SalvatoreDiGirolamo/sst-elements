@@ -1,7 +1,14 @@
 
-debug = 0
+debug = 1
 
 netConfig = {
+}
+
+merlin = {
+    "verbose" : 10,
+    "verboseLevel" : 10,
+    "verboseMask" : -1,
+    "debug" : 1
 }
 
 networkParams = {
@@ -14,6 +21,10 @@ networkParams = {
     "flitSize" : "8B",
     "input_buf_size" : "14KB",
     "output_buf_size" : "14KB",
+    "merlin.verboseLevel" : 10,
+    "merlin.verboseMask" : -1,
+    "merlin.debug" : 1,
+    "merlin.verbose" : 10
 }
 
 nicParams = {

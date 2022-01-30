@@ -132,6 +132,8 @@ private:
 
     void init_vcs();
     Statistic<uint64_t>** xbar_stalls;
+    std::vector<uint32_t> port_stalls_busy;
+    std::vector<uint32_t> port_stalls_credit;
 
     Output& output;
 

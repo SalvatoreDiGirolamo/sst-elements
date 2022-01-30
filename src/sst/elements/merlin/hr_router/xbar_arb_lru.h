@@ -167,7 +167,13 @@ public:
                     // next_list[unsat_index++] = check;
                     *unsat_list = check;
                     ++unsat_list;
-                    progress_vc[port] = -2;
+                    
+                    uint32_t res = -2;
+                    if (out_port_busy[next_port] > 0) res = -3;
+                    if (!ports[next_port]->spaceToSend(next_vc, src_event->getFlitCount())) res = -4;
+                    if (out_port_busy[next_port] > 0 && !ports[next_port]->spaceToSend(next_vc, src_event->getFlitCount())) res = -5;
+                
+                    progress_vc[port] = res;
                 }
             }
             else {
